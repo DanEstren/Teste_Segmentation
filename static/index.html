@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Anotador de Segmentação</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+        .container { display: flex; gap: 20px; }
+        #canvas-wrapper { position: relative; border: 2px solid #333; display: inline-block; }
+        canvas { cursor: crosshair; }
+        .controls { margin-bottom: 10px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <input type="file" id="uploadInput" accept="image/*">
+        <button onclick="sendCrop()">Enviar Crop para Segmentar</button>
+        <span id="status"></span>
+    </div>
+
+    <div class="container">
+        <div id="canvas-wrapper">
+            <canvas id="imageCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+        const fileInput = document.getElementById('uploadInput');
+        
+        let img = new Image();
+        let startX, startY, currentX, currentY;
+        let isDrawing = false;
+        let rect = {}; // Guarda as coordenadas finais {x, y, w, h}
+
+        // Carregar imagem no Canvas
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    draw();
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        });
+
+        // Lógica de Mouse para desenhar o retângulo
+        canvas.addEventListener('mousedown', (e) => {
+            const rectBounds = canvas.getBoundingClientRect();
+            startX = e.clientX - rectBounds.left;
+            startY = e.clientY - rectBounds.top;
+            isDrawing = true;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const rectBounds = canvas.getBoundingClientRect();
+            currentX = e.clientX - rectBounds.left;
+            currentY = e.clientY - rectBounds.top;
+            draw();
+            drawRect(startX, startY, currentX - startX, currentY - startY);
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            isDrawing = false;
+            // Define o retângulo final (trata larguras negativas se desenhar pra trás)
+            let w = currentX - startX;
+            let h = currentY - startY;
+            rect = {
+                x: w < 0 ? currentX : startX,
+                y: h < 0 ? currentY : startY,
+                w: Math.abs(w),
+                h: Math.abs(h)
+            };
+        });
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+        }
+
+        function drawRect(x, y, w, h) {
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, w, h);
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+            ctx.fillRect(x, y, w, h);
+        }
+
+        // Enviar para o Backend
+        async function sendCrop() {
+            if (!rect.w || !fileInput.files[0]) {
+                alert("Selecione uma imagem e desenhe uma área!");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('box', JSON.stringify(rect));
+
+            document.getElementById('status').innerText = "Processando...";
+
+            try {
+                const response = await fetch('http://localhost:8000/segment', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                document.getElementById('status').innerText = `Sucesso! Salvo em: ${data.saved_at}`;
+                console.log(data);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('status').innerText = "Erro ao processar.";
+            }
+        }
+    </script>
+</body>
+</html>
