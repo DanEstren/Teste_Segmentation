@@ -2,170 +2,33 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Anotador em Tempo Real - FastSAM</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
-        .controls { margin-bottom: 15px; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px;}
-        button:hover { background: #0056b3; }
-        .btn-danger { background: #dc3545; }
-        .btn-danger:hover { background: #c82333; }
-        
-        /* O container que segura o vídeo e o canvas sobrepostos */
-        #video-container { 
-            position: relative; 
-            display: inline-block; 
-            border: 2px solid #333;
-            background-color: #000;
-        }
-        
-        /* O vídeo em si */
-        #videoStream {
-            display: block; /* Remove o espaço fantasma abaixo da imagem */
-            max-width: 100%;
-        }
-
-        /* O canvas invisível que fica por cima do vídeo só para desenhar */
-        #overlayCanvas { 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            cursor: crosshair; 
-            z-index: 10;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastSAM Auto-Annotator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 
-    <div class="controls">
-        <button onclick="sendCrop()">Definir Alvo para IA</button>
-        <button onclick="clearCrop()" class="btn-danger">Limpar Alvo</button>
-        <span id="status" style="margin-left: 10px; font-weight: bold;"></span>
-    </div>
+    <header class="topbar">
+        <h1>🎯 FastSAM Annotator</h1>
+        <div class="status-badge" id="statusBadge">Pronto para iniciar</div>
+    </header>
 
-    <div id="video-container">
-        <img id="videoStream" src="/video_feed_inference" alt="Webcam Stream">
-        <canvas id="overlayCanvas"></canvas>
-    </div>
+    <main class="workspace">
+        <div class="toolbar">
+            <button id="btnFreeze" class="btn btn-freeze">
+                <span class="icon">❄️</span> Congelar Tela
+            </button>
+            <button id="btnSave" class="btn btn-save" style="display: none;">
+                <span class="icon">💾</span> Salvar no Dataset
+            </button>
+        </div>
 
-    <script>
-        const canvas = document.getElementById('overlayCanvas');
-        const ctx = canvas.getContext('2d');
-        const videoElement = document.getElementById('videoStream');
-        
-        let startX, startY, currentX, currentY;
-        let isDrawing = false;
-        let rect = null; // Guarda as coordenadas finais {x, y, w, h}
+        <div class="video-wrapper">
+            <img id="videoStream" src="/video_feed_inference" alt="Webcam Stream">
+            <canvas id="overlayCanvas"></canvas>
+        </div>
+    </main>
 
-        // Sincroniza o tamanho do Canvas com o tamanho real do vídeo recebido
-        videoElement.onload = function() {
-            canvas.width = videoElement.width;
-            canvas.height = videoElement.height;
-        };
-
-        // Lógica de Mouse para desenhar o retângulo
-        canvas.addEventListener('mousedown', (e) => {
-            const rectBounds = canvas.getBoundingClientRect();
-            startX = e.clientX - rectBounds.left;
-            startY = e.clientY - rectBounds.top;
-            isDrawing = true;
-        });
-
-        canvas.addEventListener('mousemove', (e) => {
-            if (!isDrawing) return;
-            const rectBounds = canvas.getBoundingClientRect();
-            currentX = e.clientX - rectBounds.left;
-            currentY = e.clientY - rectBounds.top;
-            
-            // Limpa o canvas e desenha enquanto arrasta
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawRect(startX, startY, currentX - startX, currentY - startY);
-        });
-
-        canvas.addEventListener('mouseup', (e) => {
-            isDrawing = false;
-            let w = currentX - startX;
-            let h = currentY - startY;
-            
-            // Se foi só um clique sem arrastar, ignora
-            if (w === 0 || h === 0) return;
-
-            // Define o retângulo final (trata larguras negativas se desenhar pra trás)
-            rect = {
-                x: Math.round(w < 0 ? currentX : startX),
-                y: Math.round(h < 0 ? currentY : startY),
-                w: Math.round(Math.abs(w)),
-                h: Math.round(Math.abs(h))
-            };
-        });
-
-        function drawRect(x, y, w, h) {
-            ctx.strokeStyle = 'red';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]); // Linha tracejada para diferenciar do backend
-            ctx.strokeRect(x, y, w, h);
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
-            ctx.fillRect(x, y, w, h);
-        }
-
-        // Enviar o Box para o Backend (O backend passará a usar isso no loop de vídeo)
-        async function sendCrop() {
-            if (!rect) {
-                alert("Desenhe uma área no vídeo primeiro!");
-                return;
-            }
-
-            // Limpa o tracejado do frontend, pois o backend vai começar a mandar o quadrado fixo no stream
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
-            ctx.setLineDash([]); 
-
-            const formData = new URLSearchParams();
-            formData.append('box', JSON.stringify(rect));
-
-            document.getElementById('status').innerText = "Processando alvo...";
-            document.getElementById('status').style.color = "blue";
-
-            try {
-                // Chama a nova rota /set_target do routes.py
-                const response = await fetch('/set_target', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: formData.toString()
-                });
-                const data = await response.json();
-                document.getElementById('status').innerText = "Alvo Definido!";
-                document.getElementById('status').style.color = "green";
-                console.log(data);
-            } catch (error) {
-                console.error(error);
-                document.getElementById('status').innerText = "Erro na conexão.";
-                document.getElementById('status').style.color = "red";
-            }
-        }
-
-        // Função extra para limpar e parar a inferência
-        async function clearCrop() {
-            rect = null;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Envia um box nulo para o backend parar de processar o FastSAM
-            const formData = new URLSearchParams();
-            formData.append('box', 'null');
-
-            try {
-                await fetch('/set_target', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: formData.toString()
-                });
-                document.getElementById('status').innerText = "Alvo removido.";
-                document.getElementById('status').style.color = "black";
-            } catch (error) {
-                console.error(error);
-            }
-        }
-    </script>
+    <script src="/static/js/index.js" defer></script>
 </body>
 </html>

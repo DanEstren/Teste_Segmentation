@@ -1,0 +1,123 @@
+/* Variáveis de cor para facilitar a manutenção */
+:root {
+    --bg-color: #121212;
+    --panel-bg: #1e1e1e;
+    --text-color: #ffffff;
+    --primary-blue: #0d6efd;
+    --info-cyan: #0dcaf0;
+    --warning-yellow: #ffc107;
+    --success-green: #198754;
+    --danger-red: #dc3545;
+    --border-radius: 8px;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Cabeçalho */
+.topbar {
+    background-color: var(--panel-bg);
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+}
+
+.topbar h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.status-badge {
+    background-color: #333;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+/* Área de Trabalho Principal */
+.workspace {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+/* Barra de Ferramentas (Botões) */
+.toolbar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    background-color: var(--panel-bg);
+    padding: 15px 25px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: transform 0.1s, filter 0.2s;
+}
+
+.btn:active {
+    transform: scale(0.96);
+}
+
+.btn:hover {
+    filter: brightness(1.1);
+}
+
+.btn-freeze { background-color: var(--info-cyan); color: #000; }
+.btn-unfreeze { background-color: var(--warning-yellow); color: #000; }
+.btn-save { background-color: var(--success-green); }
+
+.video-wrapper {
+    position: relative;
+    /* O segredo: inline-block faz o container "abraçar" o vídeo perfeitamente, sem sobrar bordas pretas */
+    display: inline-block; 
+    border: 3px solid #333;
+    border-radius: var(--border-radius);
+    background-color: #000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    /* Removido o max-height que estava causando a faixa preta */
+}
+
+#videoStream {
+    display: block;
+    /* Usa uma largura responsiva, mas limita ao tamanho real do backend (1280) */
+    width: 85vw; 
+    max-width: 1280px; 
+    height: auto; /* A altura é calculada automaticamente mantendo a proporção 4:3 */
+}
+
+#overlayCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%; /* O Canvas vai ter o exato mesmo tamanho visual do #videoStream */
+    height: 100%;
+    cursor: crosshair;
+    z-index: 10;
+}

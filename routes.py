@@ -31,3 +31,14 @@ async def set_target(box: str = Form(...)):
         return {"status": "success", "message": "Alvo atualizado para inferência"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    
+    # --- NOVAS ROTAS ---
+@router.post("/toggle_freeze")
+async def toggle_freeze():
+    is_frozen = inference_service.toggle_freeze()
+    return {"status": "success", "is_frozen": is_frozen}
+
+@router.post("/save_dataset")
+async def save_dataset():
+    result = inference_service.save_dataset()
+    return result

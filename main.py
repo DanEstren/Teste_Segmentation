@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes import router
 import webbrowser, threading, uvicorn
 from camera import start_camera_loop # Importa a função de start
+import torch
 
 app = FastAPI(title="FastSAM Auto-Annotator API")
 
@@ -16,6 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 app.include_router(router)
 
 # --- STARTUP EVENT ---
@@ -24,8 +27,9 @@ def startup_event():
     start_camera_loop() # Inicia a leitura da webcam em background
 
 def abrir_navegador():
+    print(torch.cuda.is_available())
     webbrowser.open(f"http://localhost:{PORT}")
 
 if __name__ == "__main__":
-    threading.Timer(0.5, abrir_navegador).start()
+    abrir_navegador()
     uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=True)
