@@ -1,7 +1,9 @@
 fastapi
-uvicorn
+uvicorn[standart]
 python-multipart
-opencv-python
+# opencv-python
 ultralytics
 supervision
-numpy
+# numpy
+
+#conda install numpy opencv
